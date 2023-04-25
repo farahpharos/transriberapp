@@ -11,10 +11,208 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model Star {
-  id              Int       @default(autoincrement()) @id
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  name            String    @db.VarChar(255)
-  constellation   String    @db.VarChar(255)
+// This DB is for an app that will allow users to upload audio files and generate transcripts
+// The DB will store users, audio file metadata, and generated transcript metadata
+// The audio files and transcripts will be stores elsewhere
+// This app's target audience are language learners who will upload audio and use the transcripts 
+// for deliberate practice. The transcripts will be annotated with comments, corrections, and highlights
+// The user table will store user information
+// userid needs to be unique uuid
+model User {
+    id       String   @id @default(uuid())
+    role     String   @default("user")
+    firstName String
+    lastName  String?
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    email     String   @unique
+    credits   Credit[]
+    audio     Audio[]
+    transcript Transcript[]
+    wordBank  WordBank[]
+    savedWord SavedWord[]
+    userSettings UserSetting[]
+    userPreferences UserPreference[]
+    userStats UserStat[]
+    userGoals UserGoal[]
+    userAchievements UserAchievement[]
+    pronunciationRecordings PronunciationRecording[]
+    profilePicture String?
+    @@index([email])
+}
+
+// The audio table will store audio file metadata
+// audioId can be incremented and linked to the user
+// metadata will be stored as a JSON object
+model Audio {
+    id       String   @id @default(cuid())
+    status   String   @default("uploaded")
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    name     String
+    url      String
+    duration Int
+    language String?
+    userId   String
+    user     User     @relation(fields: [userId], references: [id])
+    transcript Transcript[]
+    @@index([userId])
+}
+
+// The transcript table will store transcript metadata
+// transcriptId can be incremented and linked to the user
+// metadata will be stored as a JSON object
+model Transcript {
+    id       String   @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    version  Int     @default(1)
+    name     String
+    url      String
+    numberOfSpeakers Int
+    numberOfWords Int
+    language String
+    averageConfidence Float
+    userId   String
+    user     User     @relation(fields: [userId], references: [id])
+    audioId  String
+    audio    Audio    @relation(fields: [audioId], references: [id])
+    metadata Json
+    annotations Annotation[]
+    @@index([userId])
+    @@index([audioId])
+}
+
+// The credit table will store credit information
+// creditId can be incremented and linked to the user
+
+model Credit {
+    id       String   @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    amount   Int     @default(0)
+    userId   String
+    user     User     @relation(fields: [userId], references: [id])
+    @@index([userId])
+}
+
+// add an annotation table to store annotations for transcripts
+
+model Annotation {
+    id      String   @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    name    String
+    start   Float   // Start time of the annotation in seconds
+    end     Float   // End time of the annotation in seconds
+    annotationText String? // The text of the annotation
+    anonotationType String //e.g., 'highlight', 'comment', 'correction', etc.
+
+    transcriptId String
+    transcript   Transcript @relation(fields: [transcriptId], references: [id])
+    @@index([transcriptId])
+}
+
+// add a saved vocab table for a User's saved words
+
+
+model WordBank {
+    id      String   @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    savedWords SavedWord[]
+    definition String
+    language String
+    userId   String
+    user     User     @relation(fields: [userId], references: [id])
+    @@index([userId])
+}
+
+// make a table for individual words in wordbank
+// add number of times a word's definition has been viewed
+// add where the word was found and a link to the source
+
+model SavedWord {
+    id      String   @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    word String
+    definition String
+    language String
+    userId   String
+    user     User     @relation(fields: [userId], references: [id])
+    wordBankId String
+    wordBank   WordBank @relation(fields: [wordBankId], references: [id])
+    @@index([userId])
+    @@index([wordBankId])
+}
+
+// add a table for user settings
+// add a table for user preferences
+// add a table for user stats
+// add a table for user goals
+// add a table for user achievements
+
+model UserSetting {
+    id      String   @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    userId   String
+    user     User     @relation(fields: [userId], references: [id])
+    @@index([userId])
+}
+
+model UserPreference {
+    id      String   @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    userId   String
+    user     User     @relation(fields: [userId], references: [id])
+    @@index([userId])
+}
+
+model UserStat {
+    id      String   @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    userId   String
+    user     User     @relation(fields: [userId], references: [id])
+    @@index([userId])
+}
+
+model UserGoal {
+    id      String   @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    studygoal Int @default(0)
+    userId   String
+    userachievement UserAchievement[]
+    user     User     @relation(fields: [userId], references: [id])
+    @@index([userId])
+}
+
+model UserAchievement {
+    id      String   @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    studyStreak Int @default(0)
+    // link to user goal table
+    usergoalId String
+    usergoal   UserGoal @relation(fields: [usergoalId], references: [id])
+    userId   String
+    user     User     @relation(fields: [userId], references: [id])
+    @@index([userId])
+    @@index([usergoalId])
+}
+
+// add a table for user uploaded recordings / pronunciation practice
+
+model PronunciationRecording {
+    id      String   @id @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+    url String
+    userId   String
+    user     User     @relation(fields: [userId], references: [id])
+    @@index([userId])
 }
